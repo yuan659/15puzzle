@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<title>15PUZZLE</title>
+<style>
+  :root{
+    --cell: 60px;
+    --size: 4;
+    --board: calc(var(--cell) * var(--size));
+  }
+  body { font-family: sans-serif; }
+  #wrapper { width: var(--board); margin: 0 auto; text-align: center; }
+  #indicators { display: flex; justify-content: space-between; margin: 8px 0; }
+  #table { margin: 0 auto; border-spacing: 0; border-collapse: collapse; padding: 0; }
+  td {
+    width: var(--cell); height: var(--cell); line-height: var(--cell);
+    border: 1px solid #999;
+    box-sizing: border-box;
+    background-image: url('images/puzzle.jpg');
+    background-size: calc(var(--cell) * var(--size)) calc(var(--cell) * var(--size));
+    background-repeat: no-repeat;
+    color: transparent;
+    user-select: none;
+    cursor: pointer;
+    padding: 0;
+    margin: 0;
+  }
+  td.empty {
+    background: none !important;
+    cursor: default;
+  }
+  td.ok { border-color: #FFD700; }
+  #startBt { display: block; width: 200px; margin: 10px auto; height: 50px; cursor: pointer; }
+  #startBt:hover { opacity: .85; }
+  #msgBox { height: 26px; line-height: 26px; margin-top: 6px; font-size: 20px; }
+</style>
+</head>
+<body>
+<div id="wrapper">
+  <div id="indicators">
+    <span id="moveCounter">Moves: 0</span>
+    <span id="timer">Time: 0s</span>
+  </div>
+  <table id="table"></table>
+  <button id="startBt">START</button>
+  <p id="msgBox"></p>
+</div>
+
+<script>
+window.onload = () => {
+  const size = 4;
+  const cell = 60;
+  let panels = [], isShuffled = false;
+  let moveCount = 0, timerId, startTime;
+
+  const table   = document.getElementById('table');
+  const msgBox  = document.getElementById('msgBox');
+  const moveEl  = document.getElementById('moveCounter');
+  const timerEl = document.getElementById('timer');
+  const startBt = document.getElementById('startBt');
+
+  const init = () => {
+    clearInterval(timerId);
+    panels = [];
+    table.textContent = '';
+    msgBox.textContent = '';
+    moveCount = 0;
+    moveEl.textContent = 'Moves: 0';
+    timerEl.textContent = 'Time: 0s';
+    isShuffled = false;
+    createStage();
+  };
+
+  const createStage = () => {
+    for(let i = 0; i < size; i++){
+      const tr = document.createElement('tr');
+      for(let j = 0; j < size; j++){
+        const td = document.createElement('td');
+        const idx = i * size + j;
+        td.posId = idx;
+        td.textContent = idx === size * size - 1 ? '' : idx + 1;
+        if(idx !== size * size - 1){
+          td.style.backgroundPosition = `-${j * cell}px -${i * cell}px`;
+        } else {
+          td.classList.add('empty');
+          td.style.background = 'none';
+        }
+        td.addEventListener('click', click);
+        panels.push(td);
+        tr.appendChild(td);
+      }
+      table.appendChild(tr);
+    }
+  };
+
+  const click = (e) => {
+    const pos = e.currentTarget.posId;
+    const emptyPos = findEmptyAdjacent(pos);
+    if(emptyPos !== null){
+      swap(pos, emptyPos);
+      if(isShuffled){
+        moveCount++;
+        moveEl.textContent = `Moves: ${moveCount}`;
+        checkComplete();
+      }
+    }
+  };
+
+  const findEmptyAdjacent = (pos) => {
+    const adj = [pos - size, pos + size, pos - 1, pos + 1];
+    for(const p of adj){
+      if(p >= 0 && p < size * size && panels[p].classList.contains('empty')) return p;
+    }
+    return null;
+  };
+
+  const swap = (p1, p2) => {
+    const tmpText = panels[p1].textContent;
+    const tmpPos  = panels[p1].style.backgroundPosition;
+    const tmpImg  = panels[p1].style.backgroundImage;
+
+    panels[p1].textContent = panels[p2].textContent;
+    panels[p1].style.backgroundPosition = panels[p2].style.backgroundPosition;
+    panels[p1].style.backgroundImage    = panels[p2].style.backgroundImage;
+
+    panels[p2].textContent = tmpText;
+    panels[p2].style.backgroundPosition = tmpPos;
+    panels[p2].style.backgroundImage    = tmpImg;
+
+    panels[p1].classList.toggle('empty');
+    panels[p2].classList.toggle('empty');
+  };
+
+  const checkComplete = () => {
+    for(let i = 0; i < panels.length; i++){
+      if(panels[i].textContent === '') continue;
+      if(panels[i].posId !== parseInt(panels[i].textContent) - 1) return;
+    }
+    msgBox.textContent = 'Complete!';
+    clearInterval(timerId);
+  };
+
+  const startTimer = () => {
+    startTime = Date.now();
+    timerEl.textContent = 'Time: 0s';
+    timerId = setInterval(() => {
+      const sec = Math.floor((Date.now() - startTime) / 1000);
+      timerEl.textContent = `Time: ${sec}s`;
+    }, 1000);
+  };
+
+  const shuffle = (moves = size * 1000) => {
+    for(let i = 0; i < moves; i++){
+      const emptyIdx = panels.findIndex(td => td.classList.contains('empty'));
+      const adj = [];
+      if(emptyIdx - size >= 0) adj.push(emptyIdx - size);
+      if(emptyIdx + size < size * size) adj.push(emptyIdx + size);
+      if(emptyIdx % size !== 0) adj.push(emptyIdx - 1);
+      if((emptyIdx + 1) % size !== 0) adj.push(emptyIdx + 1);
+      const target = adj[Math.floor(Math.random() * adj.length)];
+      swap(target, emptyIdx);
+    }
+    isShuffled = true;
+  };
+
+  startBt.addEventListener('click', () => {
+    init();
+    setTimeout(() => {
+      shuffle();
+      startTimer();
+    }, 50);
+  });
+
+  init();
+};
+</script>
+</body>
+</html>
